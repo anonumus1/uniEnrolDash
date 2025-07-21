@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>University Enrolment Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f5f5f5;
+            margin: 0;
+            padding: 0;
+            color: #333;
+        }
+        header {
+            background-color: #003366;
+            color: white;
+            padding: 1rem;
+            text-align: center;
+            font-size: 1.5rem;
+            font-weight: bold;
+        }
+        .container {
+            max-width: 950px;
+            margin: 20px auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        .controls {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+        select, button {
+            padding: 8px;
+            font-size: 1rem;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        h2 {
+            text-align: center;
+            color: #003366;
+        }
+        canvas {
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <header id="dashboard-title">University Enrolment Dashboard</header>
+
+    <div class="container">
+        <div class="controls">
+            <div>
+                <label for="university" id="uni-label">Select University:</label>
+                <select id="university">
+                    <option value="all" selected>All Universities</option>
+                    <option value="uottawa">University of Ottawa</option>
+                    <option value="utoronto">University of Toronto</option>
+                    <option value="waterloo">University of Waterloo</option>
+                    <option value="guelph">University of Guelph</option>
+                </select>
+            </div>
+            <div>
+                <button id="lang-toggle">Français</button>
+            </div>
+        </div>
+
+        <h2 id="line-title">Enrolment Trends (2020–2024)</h2>
+		<canvas id="lineChart"></canvas>
+        <h2 id="bar-title">Faculty Enrolment (2024, All Universities)</h2>
+        <canvas id="barChart"></canvas>
+    </div>
+
+<script>
+    // === ENROLMENT TRENDS DATA (Line Chart) ===
+    const enrolmentData = {
+        uottawa: [41754, 41882, 41462, 42253, 47898],
+        utoronto: [90000, 93000, 96000, 98500, 99794],
+        waterloo: [42200, 41000, 37476, 39000, 41000],
+        guelph: [26152, 24910, 27206, 28500, 30634]
+    };
+    const years = [2020, 2021, 2022, 2023, 2024];
+
+    // === FACULTY ENROLMENT DATA (2024) ===
+    const faculties = {
+        uottawa: {data: [5197, 6845, 400, 2253, 11107]},
+        utoronto: {data: [30000, 8600, 1500, 1000, 10000]},
+        waterloo: {data: [9000, 10824, 500, 0, 3000]},
+        guelph: {data: [7500, 3400, 300, 0, 4000]}
+    };
+    const allFaculties = ["Arts", "Engineering", "Linguistics", "Law", "Social Sciences"];
+
+    // === UNIVERSITY LABELS (for dynamic titles) ===
+    const uniNamesEn = {
+        all: "All Universities",
+        uottawa: "UOttawa",
+        utoronto: "U of T",
+        waterloo: "Waterloo",
+        guelph: "Guelph"
+    };
+    const uniNamesFr = {
+        all: "toutes les universités",
+        uottawa: "Université d’Ottawa",
+        utoronto: "Université de Toronto",
+        waterloo: "Université de Waterloo",
+        guelph: "Université de Guelph"
+    };
+
+    // === LINE CHART (Default: All Universities) ===
+    const ctxLine = document.getElementById('lineChart').getContext('2d');
+    let lineChart = new Chart(ctxLine, {
+        type: 'line',
+        data: {
+            labels: years,
+            datasets: [
+                {label: 'University of Ottawa', data: enrolmentData.uottawa, borderColor: '#003366', backgroundColor: 'rgba(0,51,102,0.1)', tension: 0.3},
+                {label: 'University of Toronto', data: enrolmentData.utoronto, borderColor: '#990000', backgroundColor: 'rgba(153,0,0,0.1)', tension: 0.3},
+                {label: 'University of Waterloo', data: enrolmentData.waterloo, borderColor: '#006600', backgroundColor: 'rgba(0,102,0,0.1)', tension: 0.3},
+                {label: 'University of Guelph', data: enrolmentData.guelph, borderColor: '#ff9900', backgroundColor: 'rgba(255,153,0,0.1)', tension: 0.3}
+            ]
+        },
+        options: {responsive: true, plugins: {legend: {display: true}}}
+    });
+
+    // === BAR CHART (Default: All Universities) ===
+    const ctxBar = document.getElementById('barChart').getContext('2d');
+    let barChart = new Chart(ctxBar, {
+        type: 'bar',
+        data: {
+            labels: allFaculties,
+            datasets: [
+                {label: "University of Ottawa", data: faculties.uottawa.data, backgroundColor: '#003366'},
+                {label: "University of Toronto", data: faculties.utoronto.data, backgroundColor: '#990000'},
+                {label: "University of Waterloo", data: faculties.waterloo.data, backgroundColor: '#006600'},
+                {label: "University of Guelph", data: faculties.guelph.data, backgroundColor: '#ff9900'}
+            ]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    display: true,
+                    onClick: (e, legendItem, legend) => {
+                        const index = legendItem.datasetIndex;
+                        const ci = legend.chart;
+                        const meta = ci.getDatasetMeta(index);
+                        meta.hidden = meta.hidden === null ? !ci.data.datasets[index].hidden : null;
+                        ci.update();
+                    }
+                }
+            }
+        }
+    });
+
+    // === LANGUAGE & TITLE DYNAMIC UPDATE ===
+    let isFrench = false;
+    let currentSelection = "all";
+
+    function updateTitles() {
+        if (isFrench) {
+            document.getElementById('dashboard-title').textContent = "Tableau de bord des inscriptions universitaires";
+            document.getElementById('uni-label').textContent = "Sélectionner l'université :";
+            document.getElementById('line-title').textContent = "Tendances des inscriptions (2020–2024)";
+            document.getElementById('bar-title').textContent =
+                `Inscriptions par faculté (2024, ${uniNamesFr[currentSelection]})`;
+            document.getElementById('lang-toggle').textContent = "English";
+        } else {
+            document.getElementById('dashboard-title').textContent = "University Enrolment Dashboard";
+            document.getElementById('uni-label').textContent = "Select University:";
+            document.getElementById('line-title').textContent = "Enrolment Trends (2020–2024)";
+            document.getElementById('bar-title').textContent =
+                `Faculty Enrolment (2024, ${uniNamesEn[currentSelection]})`;
+            document.getElementById('lang-toggle').textContent = "Français";
+        }
+    }
+
+    document.getElementById('lang-toggle').addEventListener('click', () => {
+        isFrench = !isFrench;
+        updateTitles();
+    });
+
+    // === DROPDOWN INTERACTIVITY ===
+    document.getElementById('university').addEventListener('change', (e) => {
+        currentSelection = e.target.value;
+
+        // Update Line Chart
+        if (currentSelection === "all") {
+            lineChart.data.datasets = [
+                {label: 'University of Ottawa', data: enrolmentData.uottawa, borderColor: '#003366', backgroundColor: 'rgba(0,51,102,0.1)', tension: 0.3},
+                {label: 'University of Toronto', data: enrolmentData.utoronto, borderColor: '#990000', backgroundColor: 'rgba(153,0,0,0.1)', tension: 0.3},
+                {label: 'University of Waterloo', data: enrolmentData.waterloo, borderColor: '#006600', backgroundColor: 'rgba(0,102,0,0.1)', tension: 0.3},
+                {label: 'University of Guelph', data: enrolmentData.guelph, borderColor: '#ff9900', backgroundColor: 'rgba(255,153,0,0.1)', tension: 0.3}
+            ];
+        } else {
+            const uniNames = {
+                uottawa: 'University of Ottawa',
+                utoronto: 'University of Toronto',
+                waterloo: 'University of Waterloo',
+                guelph: 'University of Guelph'
+            };
+            const colors = {
+                uottawa: '#003366',
+                utoronto: '#990000',
+                waterloo: '#006600',
+                guelph: '#ff9900'
+            };
+            lineChart.data.datasets = [{
+                label: uniNames[currentSelection],
+                data: enrolmentData[currentSelection],
+                borderColor: colors[currentSelection],
+                backgroundColor: 'rgba(0,0,0,0.05)',
+                tension: 0.3
+            }];
+        }
+        lineChart.update();
+
+        // Update Bar Chart
+        if (currentSelection === "all") {
+            barChart.data.labels = allFaculties;
+            barChart.data.datasets = [
+                {label: "University of Ottawa", data: faculties.uottawa.data, backgroundColor: '#003366'},
+                {label: "University of Toronto", data: faculties.utoronto.data, backgroundColor: '#990000'},
+                {label: "University of Waterloo", data: faculties.waterloo.data, backgroundColor: '#006600'},
+                {label: "University of Guelph", data: faculties.guelph.data, backgroundColor: '#ff9900'}
+            ];
+        } else {
+            barChart.data.labels = allFaculties;
+            barChart.data.datasets = [{
+                label: "Faculty Enrolment",
+                data: faculties[currentSelection].data,
+                backgroundColor: "#006699"
+            }];
+        }
+        barChart.update();
+        updateTitles();
+    });
+
+    // Initial titles set
+    updateTitles();
+</script>
+</body>
+</html>
